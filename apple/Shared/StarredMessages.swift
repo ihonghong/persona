@@ -94,6 +94,18 @@ extension APIClient {
     private nonisolated struct AddedStar: Decodable { let star: StarredSnapshot }
     private nonisolated struct RemovedStar: Decodable { let removed: StarredSnapshot? }
 
+    /// Wait for the live route as usual. If it installs another authority in the meantime, the old operation retires.
+    func pinStarredAuthority() -> APIClient {
+        guard let wait = requestRoute else { return self }
+        let original = config
+        var client = self
+        client.requestRoute = {
+            guard let selected = try await wait(), selected == original else { throw CancellationError() }
+            return selected
+        }
+        return client
+    }
+
     func starredIndex() async throws -> StarredIndex {
         try await get("/api/v1/assistant/starred", query: ["index": "1"], as: StarredIndex.self)
     }

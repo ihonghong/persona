@@ -48,7 +48,7 @@ struct StarredChatContext {
 
     private func fullText(_ source: StarredSource, bar: MessageBarInfo) async throws -> String {
         guard let api else { throw APIError(status: 0, message: String(localized: "Couldn't check the original message. Try again.")) }
-        let item = try await api.fullItem(key, id: source.item)
+        let item = try await api.pinStarredAuthority().fullItem(key, id: source.item)
         guard source.matches(item) else {
             throw APIError(status: 404, message: String(localized: "The original message is unavailable."))
         }

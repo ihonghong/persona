@@ -134,6 +134,17 @@ struct StarredMessagesTests {
         #expect(store.count == nil && store.snapshots.isEmpty && !store.canWrite)
     }
 
+    @Test func aRouteThatChangesAuthorityCannotSendAnOldStarMutation() async {
+        let hub = FakeHub()
+        var client = hub.client
+        let newConfig = ServerConfig(url: hub.url, token: "replacement")
+        client.requestRoute = { newConfig }
+        await #expect(throws: CancellationError.self) {
+            try await client.pinStarredAuthority().removeStar("saved")
+        }
+        #expect(hub.requests.isEmpty)
+    }
+
     @Test func boundedTextUsesUnicodeScalarsAndRetainsTheExistingOmissionCount() {
         var value = snapshot()
         value.id = "saved"

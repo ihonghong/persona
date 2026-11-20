@@ -58,7 +58,7 @@ import SwiftUI
     /// A request whose owner is known stays with that manager even if the hub default moves before it arrives.
     private var api: APIClient? {
         guard let current = currentClient(manager: manager), current.sameSettingsScope(as: authority) else { return nil }
-        return current
+        return current.pinStarredAuthority()
     }
 
     private func currentClient(manager: String?) -> APIClient? {
@@ -67,7 +67,7 @@ import SwiftUI
     }
 
     private func current(_ owner: Int, _ client: APIClient) -> Bool {
-        owner == scope && client.sameSettingsScope(as: api)
+        owner == scope && client.sameSettingsScope(as: currentClient(manager: manager))
     }
 
     func refresh() {
@@ -134,7 +134,7 @@ import SwiftUI
     }
 
     func mark(_ source: StarredSource, group: String) -> Mark? {
-        guard group == self.group, api != nil else { return nil }
+        guard group == self.group, currentClient(manager: manager)?.sameSettingsScope(as: authority) == true else { return nil }
         if pending.contains(source) { return .saving }
         return refs[source] == nil ? nil : .saved
     }
@@ -198,7 +198,7 @@ import SwiftUI
     static func readOriginal(_ source: StarredSource, key: SessionKey, api: APIClient) async -> Original {
         guard source.isVerified, source.identifies(key) else { return .unavailable }
         do {
-            let item = try await api.fullItem(key, id: source.item)
+            let item = try await api.pinStarredAuthority().fullItem(key, id: source.item)
             return source.matches(item) ? .verified : .unavailable
         } catch {
             guard let error = error as? APIError else { return .failed }
