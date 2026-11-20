@@ -103,6 +103,30 @@ struct StarredMessagesTests {
         #expect(store.count == 0 && hub.sent("POST", path).isEmpty)
     }
 
+    @Test func anUndoQueuedBeforeAnAuthorityChangeCannotRestoreIntoTheNewScope() async throws {
+        let hub = FakeHub()
+        var toast: Toast?
+        var queued: (@MainActor () async -> Void)?
+        let store = StarredStore(deps: .init(api: { hub.client }, report: { _ in }, toast: { toast = $0 }, open: { _ in }),
+                                 enqueueUndo: { queued = $0 })
+        hub.on("GET", path, json: #"{"refs":[\#(ref(proof))],"can_write":true}"#)
+        hub.on("DELETE", path + "/saved", json: #"{"removed":\#(draft(proof))}"#)
+        let source = snapshot().source
+        store.configure(group: key.group, offered: true, manager: "original")
+        await store.loadIndex()
+        await store.remove(source)
+        let undo = try #require(toast?.action)
+        undo.run()
+        let deferred = try #require(queued)
+
+        hub.on("GET", path, json: #"{"refs":[],"can_write":true}"#)
+        store.configure(group: key.group, offered: true, manager: "other")
+        await store.loadIndex()
+        #expect(store.canWrite)
+        await deferred()
+        #expect(hub.sent("POST", path).isEmpty)
+    }
+
     @Test func anExactMissingSourceDoesNotReadAPrefixedTranscript() async {
         let hub = FakeHub()
         let source = snapshot().source

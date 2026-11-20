@@ -18,6 +18,7 @@ import SwiftUI
     private var pending: Set<StarredSource> = []
 
     @ObservationIgnored private let deps: AssistantDeps
+    @ObservationIgnored private let enqueueUndo: (@escaping @MainActor () async -> Void) -> Void
     @ObservationIgnored private var offered = false
     @ObservationIgnored private var manager: String?
     @ObservationIgnored private var defaultManager: String?
@@ -27,7 +28,12 @@ import SwiftUI
     @ObservationIgnored private var pageRead = 0
     @ObservationIgnored private var readers = 0
 
-    init(deps: AssistantDeps) { self.deps = deps }
+    init(deps: AssistantDeps, enqueueUndo: @escaping (@escaping @MainActor () async -> Void) -> Void = { work in
+        Task { await work() }
+    }) {
+        self.deps = deps
+        self.enqueueUndo = enqueueUndo
+    }
 
     @discardableResult
     func configure(group: String?, offered: Bool, manager: String? = nil, defaultManager: String? = nil, reset: Bool = false) -> Bool {
@@ -179,7 +185,10 @@ import SwiftUI
             if let removed {
                 deps.toast(Toast(String(localized: "Message unstarred"), style: .success, action: .init(title: String(localized: "Undo")) { [weak self] in
                     guard let self, current(owner, api) else { return }
-                    Task { await self.add(removed) }
+                    enqueueUndo { [weak self] in
+                        guard let self, current(owner, api) else { return }
+                        await add(removed)
+                    }
                 }))
             }
             refresh()
