@@ -413,6 +413,9 @@ enum MessageSwipe {
 
 private struct MessageActionBarHost: ViewModifier {
     @Environment(MessageMenu.self) private var menu: MessageMenu?
+    #if os(iOS)
+    @Environment(\.layoutDirection) private var direction
+    #endif
     let id: String
     let text: String
     let isUser: Bool
@@ -429,7 +432,10 @@ private struct MessageActionBarHost: ViewModifier {
         if let menu {
             swipeable(content, menu)
                 #if os(iOS)
-                .overlay(alignment: .topTrailing) { if showsStar { StarredChatMark(item: starItem) } }
+                .overlay(alignment: .topTrailing) {
+                    // Chat rows leave a gutter on either side. The mark fits there without covering the message.
+                    if showsStar { StarredChatMark(item: starItem).offset(x: direction == .rightToLeft ? -Theme.Space.l : Theme.Space.l) }
+                }
                 #endif
                 .environment(\.messageBar, MessageBarInfo(id: id, text: text, isUser: isUser, date: date, pending: pending, from: from,
                                                             delete: delete, starItem: starItem))
