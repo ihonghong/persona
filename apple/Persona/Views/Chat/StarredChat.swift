@@ -77,8 +77,9 @@ struct StarredChatMark: View {
                         .accessibilityLabel("Starred")
                 }
             }
-            .padding(Theme.Space.xs)
-            .background(Theme.Fill.chip, in: .circle)
+            // The row's trailing alignment puts this in the existing chat gutter, outside the text's width.
+            .frame(width: Theme.Space.l, height: Theme.Space.l)
+            .alignmentGuide(.trailing) { $0[.leading] }
             .allowsHitTesting(false)
             .accessibilityIdentifier("chat-starred-mark")
         }
