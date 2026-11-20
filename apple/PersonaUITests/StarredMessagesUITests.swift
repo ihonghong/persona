@@ -44,11 +44,11 @@ final class StarredMessagesUITests: XCTestCase {
         let savedID = try XCTUnwrap((saved?["stars"] as? [[String: Any]])?.first?["item_id"] as? String)
 
         element("starred-open-original", app: app).tap()
-        XCTAssertTrue(element("starred-open-original", app: app).waitForNonExistence(timeout: 14))
-        XCTAssertTrue(text(reply, app: app).waitForExistence(timeout: 15), "the original conversation is missing")
         let highlighted = app.descendants(matching: .any).matching(identifier: "probe.chat")
             .matching(NSPredicate(format: "value CONTAINS %@ AND value CONTAINS %@", "highlighted", savedID)).firstMatch
         XCTAssertTrue(highlighted.waitForExistence(timeout: 15), "Open Original did not highlight the saved item")
+        XCTAssertTrue(element("chat.answer.\(savedID)", app: app).isHittable, "the original message is not on the active page")
+        shot(app, "agent-original")
         try await clear()
     }
 
