@@ -28,7 +28,7 @@ final class StarredMessagesUITests: XCTestCase {
         star.tap()
         XCTAssertTrue(element("chat-starred-mark", app: app).waitForExistence(timeout: 12))
 
-        openStarred(app)
+        openStarred(app, fromAgent: true)
         XCTAssertTrue(text(reply, app: app).waitForExistence(timeout: 12), "the saved reply is missing")
         shot(app, "agent-snapshot")
         element("starred-copy", app: app).tap()
@@ -40,9 +40,15 @@ final class StarredMessagesUITests: XCTestCase {
         undo.tap()
         XCTAssertTrue(text(reply, app: app).waitForExistence(timeout: 12), "Undo did not restore the snapshot")
 
+        let saved = try JSONSerialization.jsonObject(with: await request("GET", "/api/v1/assistant/starred")) as? [String: Any]
+        let savedID = try XCTUnwrap((saved?["stars"] as? [[String: Any]])?.first?["item_id"] as? String)
+
         element("starred-open-original", app: app).tap()
         XCTAssertTrue(element("starred-open-original", app: app).waitForNonExistence(timeout: 14))
         XCTAssertTrue(text(reply, app: app).waitForExistence(timeout: 15), "the original conversation is missing")
+        let highlighted = app.descendants(matching: .any).matching(identifier: "probe.chat")
+            .matching(NSPredicate(format: "value CONTAINS %@ AND value CONTAINS %@", "highlighted", savedID)).firstMatch
+        XCTAssertTrue(highlighted.waitForExistence(timeout: 15), "Open Original did not highlight the saved item")
         try await clear()
     }
 
@@ -59,10 +65,11 @@ final class StarredMessagesUITests: XCTestCase {
         let search = app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 6))
         search.tap()
-        search.typeText("No match at all")
+        let unmatched = "No match at all"
+        search.typeText(unmatched)
         XCTAssertTrue(text("Saved Design Review", app: app).waitForNonExistence(timeout: 8))
-        let clearText = search.buttons.firstMatch
-        if clearText.exists { clearText.tap() } else { search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 15)) }
+        search.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: unmatched.count))
+        search.tap()
         search.typeText("Reviewer")
         XCTAssertTrue(text("Saved Design Review", app: app).waitForExistence(timeout: 8), "search did not match the displayed speaker")
         let cancel = app.buttons["Cancel"].firstMatch
@@ -104,12 +111,12 @@ final class StarredMessagesUITests: XCTestCase {
         let app = XCUIApplication()
         let url = hub.absoluteString.addingPercentEncoding(withAllowedCharacters: .alphanumerics)!
         let appearance = env["PERSONA_STARRED_APPEARANCE"] ?? "light"
-        app.launchArguments = ["-pairURL", "persona://pair?url=\(url)&token=mock", "-AppleLanguages", "(en)",
+        app.launchArguments = ["-pairURL", "persona://pair?url=\(url)&token=mock", "-probes", "YES", "-AppleLanguages", "(en)",
                                "-AppleLocale", "en_US", "-ui.scheme", appearance]
         if agent {
             app.launchArguments += ["-tab", "dev", "-openSession", "macbook/\(reviewSession)"]
         } else {
-            app.launchArguments += ["-tab", "assistant"]
+            app.launchArguments += ["-tab", "assistant", "-app.tab", "assistant"]
             if showSidebar { app.launchArguments += ["-openAssistantSidebar", "YES"] }
         }
         if env["PERSONA_STARRED_LARGE"] == "1" {
@@ -121,14 +128,30 @@ final class StarredMessagesUITests: XCTestCase {
         return app
     }
 
-    @MainActor private func openStarred(_ app: XCUIApplication) {
+    @MainActor private func openStarred(_ app: XCUIApplication, fromAgent: Bool = false) {
         let row = element("sidebar-starred", app: app)
+        if fromAgent, !row.exists || !row.isHittable {
+            let assistant = element("shell-assistant", app: app)
+            if !assistant.exists || !assistant.isHittable {
+                let back = element("chevron.left", app: app)
+                if back.exists, back.isHittable { back.tap() }
+            }
+            if assistant.waitForExistence(timeout: 6), assistant.isHittable { assistant.tap() }
+        }
         if !row.exists || !row.isHittable {
             let openers = ["assistant-sidebar-button", "sidebar-drawer-button", "chat-sidebar-button", "shell-place-sidebar", "ToggleSidebar"]
             for id in openers where !row.exists || !row.isHittable {
                 let opener = element(id, app: app)
-                if opener.exists, opener.isHittable { opener.tap(); _ = row.waitForExistence(timeout: 4) }
+                if opener.exists, opener.isHittable {
+                    opener.tap()
+                    _ = row.waitForExistence(timeout: 4)
+                }
             }
+        }
+        if !row.exists || !row.isHittable {
+            let window = app.windows.firstMatch
+            window.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
+                .press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)))
         }
         XCTAssertTrue(row.waitForExistence(timeout: 15), "Starred is missing from Pages:\n\(app.debugDescription)")
         row.tap()

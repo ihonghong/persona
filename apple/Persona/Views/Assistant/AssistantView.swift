@@ -199,7 +199,16 @@ struct AssistantView: View {
                                 onMachines: places ? { show(.machines) } : nil,
                                 onOpenExtension: places ? { show(.extensionPage($0)) } : { r in drawer.close(); openedExtension = r },
                                 openHealth: places ? { show(.health) } : { drawer.close(); enterHealth() },
-                                openRecordingsPage: Self.recordingsPage(places ? { show(.recordings) } : { drawer.close(); showRecordings = true }))
+                                openRecordingsPage: Self.recordingsPage(places ? { show(.recordings) } : { drawer.close(); showRecordings = true }),
+                                openStarred: sidebarStars)
+    }
+
+    private var sidebarStars: (() -> Void)? {
+        #if os(iOS)
+        { show(.starred) }
+        #else
+        nil
+        #endif
     }
 
     /// The sidebar's Recordings: `open`s the page, which shows the recording running, else Record to start one.

@@ -1322,11 +1322,7 @@ extension AssistantSidebar {
             VStack(alignment: .leading, spacing: 0) {
                 meetingRow
                 action(String(localized: "Inbox"), Theme.Icon.inbox, id: "sidebar-inbox", count: InboxStore.shared.unreadCount, place: .inbox, run: openInbox)
-                #if os(iOS)
-                if let openStarred, let count = StarredStore.shared.count {
-                    action(String(localized: "Starred"), Theme.Icon.starredMessage, id: "sidebar-starred", count: count, place: .starred, run: openStarred)
-                }
-                #endif
+                starredRow
                 if TodoStore.shared.isSupported {
                     action(String(localized: "To-dos"), Theme.Icon.todo, id: "sidebar-todos", count: TodoStore.shared.sidebarCount, place: .todos, run: { (openTodos ?? openInbox)() })
                 }
@@ -1359,11 +1355,20 @@ extension AssistantSidebar {
         VStack(alignment: .leading, spacing: 0) {
             action(String(localized: "New Chat [Quick Actions ea4b29]"), Theme.Icon.conversation, id: "sidebar-new", run: newConversation)
             meetingRow
+            starredRow
             action(String(localized: "Scheduled Tasks"), Theme.Icon.schedule, run: openRoutines)
             action(String(localized: "Knowledge"), Theme.Icon.knowledge, run: openKnowledge)
             if let openHealth { action(String(localized: "Health"), Theme.Icon.health, id: "sidebar-health", run: openHealth) }
             extensionRows
         }
+    }
+
+    @ViewBuilder private var starredRow: some View {
+        #if os(iOS)
+        if let openStarred, let count = StarredStore.shared.count {
+            action(String(localized: "Starred"), Theme.Icon.starredMessage, id: "sidebar-starred", count: count, place: .starred, run: openStarred)
+        }
+        #endif
     }
 
     /// First among the places: Meetings (#8731; Recordings before), a place like the rows under it, so a tap opens the page
