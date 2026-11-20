@@ -590,6 +590,9 @@ struct AssistantView: View {
             case .profile: if placesByValue { navPath.wrappedValue.append(ShellRoute.profile) } else { showProfile = true }
             case .routines: if placesByValue { navPath.wrappedValue.append(ShellRoute.routines) } else { showRoutines = true }
             case .knowledge: if placesByValue { navPath.wrappedValue.append(ShellRoute.knowledge) } else { showKnowledge = true }
+            #if os(iOS)
+            case .starred: navPath.wrappedValue.append(ShellRoute.starred)
+            #endif
             case .inbox: navPath.wrappedValue.append(ShellRoute.inbox)
             case .todos: navPath.wrappedValue.append(ShellRoute.todos)
             case .machines: navPath.wrappedValue.append(ShellRoute.machines)
